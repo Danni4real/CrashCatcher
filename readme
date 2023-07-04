@@ -1,0 +1,13 @@
+CrashCatcher is a tool that can print call stack when program crashed or terminated
+
+OS: Linux
+Dependency: tar addr2line
+
+mkdir build
+cd build
+cmake ..
+make
+
+/xx/xx/test 
+
+note: can install execuable to where ever you want, but must use absolute path to execute, or will not work
