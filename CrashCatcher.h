@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <mutex>
 #include <regex>
 #include <chrono>
 #include <string>
@@ -112,7 +113,7 @@ void untar(const string& src, const string& des)
 {
     char cmd[1024] = {0};
 
-    snprintf(cmd, sizeof(cmd), "tar -xvf %s -C %s" ,src.c_str(),des.c_str());
+    snprintf(cmd, sizeof(cmd), "tar -xvf %s -C %s >/dev/null 2>&1" ,src.c_str(),des.c_str());
 
     run_cmd(cmd);
 }
@@ -206,6 +207,13 @@ string gen_local_proj_path()
 
 void print_backtrace(int)
 {
+    static std::mutex lock;
+    std::unique_lock<std::mutex> l(lock, std::try_to_lock);
+    if(!l.owns_lock())
+    {
+        return;
+    }
+
     void *callstack[1024];
     int frame_count = backtrace(callstack, sizeof(callstack)/sizeof(callstack[0]));
 
