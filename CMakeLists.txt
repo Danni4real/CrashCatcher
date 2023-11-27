@@ -2,7 +2,7 @@ project(test)
 
 add_definitions("-g")
 
-source_directory(. SRC_LIST) #don not include any /.. or .. or ../ in any src path, cause this path will be affect __FILE__ macro, and cause CrashCatcher not function right
+aux_source_directory(. SRC_LIST) # do not include any /.. or .. or ../ in any src path, cause this will affect __FILE__ macro, and cause CrashCatcher not function right
 
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 
