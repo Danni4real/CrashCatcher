@@ -1,6 +1,6 @@
 project(test)
 
-add_definitions("-g -O0")
+add_definitions("-g -O0") # use other -O flags, may cause trace result not accurate
 
 aux_source_directory(. SRC_LIST) # do not include any /.. or .. or ../ in any src path, cause this will affect __FILE__ macro, and cause CrashCatcher not function right
 
