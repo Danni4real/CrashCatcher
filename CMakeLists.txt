@@ -1,6 +1,6 @@
 project(test)
 
-add_definitions("-g")
+add_definitions("-g -O0")
 
 aux_source_directory(. SRC_LIST) # do not include any /.. or .. or ../ in any src path, cause this will affect __FILE__ macro, and cause CrashCatcher not function right
 
