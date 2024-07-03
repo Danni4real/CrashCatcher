@@ -269,7 +269,7 @@ void print_backtrace(int)
 
     rm(local_proj_path);
 
-    exit(0);
+    kill(getpid(), SIGKILL);
 }
 
 void handle_exception()
