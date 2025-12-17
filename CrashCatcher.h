@@ -228,34 +228,50 @@ void print_backtrace(int)
     string tar_path = local_proj_path + "/code.tar.gz";
 
     extract_appendix(bin_path, tar_path.c_str());
-    untar(tar_path, local_proj_path);
+    bool src_files_attached = false;
+    if (access(tar_path.c_str(), F_OK) == 0)
+        src_files_attached = true;
 
-    string remote_proj_path = get_remote_proj_path(get_relative_header_path(local_proj_path.c_str()));
+    string remote_proj_path;
+
+    if (src_files_attached) {
+        untar(tar_path, local_proj_path);
+
+        remote_proj_path =
+            get_remote_proj_path(
+                get_relative_header_path(
+                    local_proj_path.c_str()));
+    }
+
 
     cout << "\n\nBacktrace raw:\n";
-    char** backtrace = backtrace_symbols(callstack, frame_count);
-    for (size_t i = 0; i < frame_count; i++)
-    {
+    char **backtrace = backtrace_symbols(callstack, frame_count);
+    for (size_t i = 0; i < frame_count; i++) {
         cout << backtrace[i] << endl;
     }
 
     cout << "\n\nBacktrace detail:";
-    for(int i = 2; i < frame_count; i++)
-    {
+    for (size_t i = 2; i < frame_count; i++) {
         char cmd[1024] = {0};
         size_t vma_addr = mem2vma((size_t)callstack[i]) - 1;
 
-        snprintf(cmd,
-                 sizeof(cmd),
-                 "cd %s;"
-                 "addr2line -e %s -Ci %zx 2>&1 | while read line;"
-                                                "do s_l=${line#%s};"
-                                                    "s=${s_l%:*};"
-                                                    "l=${s_l#*:};"
-                                                    "echo $s_l;"
-                                                    "head -n $l $s | tail -1;echo '';"
-                                                "done",
-                 local_proj_path.c_str(), bin_path, vma_addr, remote_proj_path.c_str());
+        if (src_files_attached) {
+          snprintf(cmd, sizeof(cmd),
+                   "cd %s;"
+                   "addr2line -e %s -Ci %zx 2>&1 | while read line;"
+                   "do s_l=${line#%s};"
+                   "s=${s_l%:*};"
+                   "l=${s_l#*:};"
+                   "echo $s_l;"
+                   "head -n $l $s | tail -1;echo '';"
+                   "done",
+                   local_proj_path.c_str(), bin_path, vma_addr,
+                   remote_proj_path.c_str());
+        } else {
+            snprintf(cmd, sizeof(cmd),
+                   "addr2line -e %s -Ci %zx 2>&1",
+                   bin_path, vma_addr);
+        }
 
         cout << endl << run_cmd(cmd);
 
