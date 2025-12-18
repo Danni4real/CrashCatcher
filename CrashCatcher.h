@@ -251,7 +251,7 @@ void print_backtrace(int)
     }
 
     cout << "\n\nBacktrace detail:";
-    for (size_t i = 2; i < frame_count; i++) {
+    for (size_t i = 2; i < frame_count-3; i++) {
         char cmd[1024] = {0};
         size_t vma_addr = mem2vma((size_t)callstack[i]) - 1;
 
@@ -269,18 +269,11 @@ void print_backtrace(int)
                    remote_proj_path.c_str());
         } else {
             snprintf(cmd, sizeof(cmd),
-                   "addr2line -e %s -Ci %zx 2>&1",
+                   "addr2line -e %s -Cif %zx 2>&1",
                    bin_path, vma_addr);
         }
 
         cout << endl << run_cmd(cmd);
-
-        Dl_info dl_info;
-        dladdr(callstack[i],&dl_info);
-        if(dl_info.dli_sname != NULL)
-        {
-            cout << " at " << dl_info.dli_sname << endl;
-        }
     }
 
     rm(local_proj_path);
