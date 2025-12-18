@@ -234,7 +234,8 @@ void print_backtrace(int)
 
     string remote_proj_path;
 
-    if (src_files_attached) {
+    if (src_files_attached) 
+    {
         untar(tar_path, local_proj_path);
 
         remote_proj_path =
@@ -246,16 +247,19 @@ void print_backtrace(int)
 
     cout << "\n\nBacktrace raw:\n";
     char **backtrace = backtrace_symbols(callstack, frame_count);
-    for (size_t i = 0; i < frame_count; i++) {
+    for (size_t i = 0; i < frame_count; i++) 
+    {
         cout << backtrace[i] << endl;
     }
 
     cout << "\n\nBacktrace detail:";
-    for (size_t i = 2; i < frame_count-3; i++) {
+    for (size_t i = 2; i < frame_count-3; i++) 
+    {
         char cmd[1024] = {0};
         size_t vma_addr = mem2vma((size_t)callstack[i]) - 1;
 
-        if (src_files_attached) {
+        if (src_files_attached) 
+        {
           snprintf(cmd, sizeof(cmd),
                    "cd %s;"
                    "addr2line -e %s -Ci %zx 2>&1 | while read line;"
@@ -267,7 +271,9 @@ void print_backtrace(int)
                    "done",
                    local_proj_path.c_str(), bin_path, vma_addr,
                    remote_proj_path.c_str());
-        } else {
+        } 
+        else 
+        {
             snprintf(cmd, sizeof(cmd),
                    "addr2line -e %s -Cif %zx 2>&1",
                    bin_path, vma_addr);
