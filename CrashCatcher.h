@@ -65,6 +65,7 @@ size_t get_elf_size(const char *path)
                 path,
                 strerror(errno));
 
+        free(ELFheaderdata);
         return -1;
     }
 
