@@ -81,33 +81,115 @@ private:
         return s.st_size;
     }
 
-    // TODO: 1.validate ELF file; 2.figure out actual header size of ELF (malloc);
-    static size_t get_elf_size(const char *path) {
-        int fd;
-        void *ELFheaderdata;
-        Elf64_Ehdr *ELFheader;
-        size_t elfsize;
-
-        ELFheaderdata = malloc(64);
-
-        fd = open(path, O_RDONLY);
+    static size_t get_elf_size(const char* path) {
+        int fd = open(path, O_RDONLY);
         if (fd == -1) {
-            fprintf(stderr, "Failed to open input file %s: %s\n", path,
-                    strerror(errno));
-
-            free(ELFheaderdata);
+            fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
             return -1;
         }
 
-        read(fd, ELFheaderdata, 64);
-        ELFheader = (Elf64_Ehdr *) ELFheaderdata;
+        struct stat st{};
+        if (fstat(fd, &st) < 0) {
+            perror("fstat");
+            close(fd);
+            return -1;
+        }
+        off_t file_size = st.st_size;
 
-        elfsize = ELFheader->e_shoff + (ELFheader->e_shnum * ELFheader->e_shentsize);
+        unsigned char ident[EI_NIDENT];
+        ssize_t rd_ret = pread(fd, ident, EI_NIDENT, 0);
+        if (rd_ret != EI_NIDENT) {
+            fprintf(stderr, "Failed to read ELF ident\n");
+            close(fd);
+            return -1;
+        }
+        
+        if (memcmp(ident, ELFMAG, SELFMAG) != 0) {
+            fprintf(stderr, "Not an ELF file, bad magic\n");
+            close(fd);
+            return -1;
+        }
+
+        off_t max_load_end = 0;
+        off_t sh_table_end = 0;
+
+        if (ident[EI_CLASS] == ELFCLASS64) {
+            Elf64_Ehdr ehdr{};
+            rd_ret = pread(fd, &ehdr, sizeof(ehdr), 0);
+            if (rd_ret != sizeof(ehdr)) {
+                fprintf(stderr, "Read ELF64 Ehdr failed\n");
+                close(fd);
+                return -1;
+            }
+            
+            size_t ph_num = ehdr.e_phnum;
+            off_t ph_off = ehdr.e_phoff;
+            Elf64_Phdr* ph_buf = reinterpret_cast<Elf64_Phdr*>(malloc(ph_num * sizeof(Elf64_Phdr)));
+            if (!ph_buf) {
+                close(fd);
+                return -1;
+            }
+            
+            rd_ret = pread(fd, ph_buf, ph_num * sizeof(Elf64_Phdr), ph_off);
+            if (rd_ret == static_cast<ssize_t>(ph_num * sizeof(Elf64_Phdr))) {
+                for (size_t i = 0; i < ph_num; ++i) {
+                    const Elf64_Phdr& ph = ph_buf[i];
+                    if (ph.p_type == PT_LOAD) {
+                        off_t seg_end = ph.p_offset + ph.p_filesz;
+                        if (seg_end > max_load_end)
+                            max_load_end = seg_end;
+                    }
+                }
+            }
+            free(ph_buf);
+
+            if (ehdr.e_shnum > 0) {
+                sh_table_end = ehdr.e_shoff + (off_t)ehdr.e_shnum * ehdr.e_shentsize;
+            }
+        } else if (ident[EI_CLASS] == ELFCLASS32) {
+            Elf32_Ehdr ehdr{};
+            rd_ret = pread(fd, &ehdr, sizeof(ehdr), 0);
+            if (rd_ret != sizeof(ehdr)) {
+                fprintf(stderr, "Read ELF32 Ehdr failed\n");
+                close(fd);
+                return -1;
+            }
+            
+            size_t ph_num = ehdr.e_phnum;
+            off_t ph_off = ehdr.e_phoff;
+            Elf32_Phdr* ph_buf = reinterpret_cast<Elf32_Phdr*>(malloc(ph_num * sizeof(Elf32_Phdr)));
+            if (!ph_buf) {
+                close(fd);
+                return -1;
+            }
+            
+            rd_ret = pread(fd, ph_buf, ph_num * sizeof(Elf32_Phdr), ph_off);
+            if (rd_ret == static_cast<ssize_t>(ph_num * sizeof(Elf32_Phdr))) {
+                for (size_t i = 0; i < ph_num; ++i) {
+                    const Elf32_Phdr& ph = ph_buf[i];
+                    if (ph.p_type == PT_LOAD) {
+                        off_t seg_end = ph.p_offset + ph.p_filesz;
+                        if (seg_end > max_load_end)
+                            max_load_end = seg_end;
+                    }
+                }
+            }
+            free(ph_buf);
+
+            if (ehdr.e_shnum > 0) {
+                sh_table_end = ehdr.e_shoff + (off_t)ehdr.e_shnum * ehdr.e_shentsize;
+            }
+        } else {
+            fprintf(stderr, "Unknown ELF class\n");
+            close(fd);
+            return -1;
+        }
+
+        off_t elf_struct_end = (max_load_end > sh_table_end) ? max_load_end : sh_table_end;
+        off_t trailer = file_size - elf_struct_end;
 
         close(fd);
-        free(ELFheaderdata);
-
-        return elfsize;
+        return elf_struct_end;
     }
 
     // converts a address in memory to its VMA address in the executable file
