@@ -326,6 +326,9 @@ private:
     static void print_backtrace(int) {
         static std::mutex lock;
         std::unique_lock<std::mutex> l(lock, std::try_to_lock);
+
+        std::cout.setf(std::ios::unitbuf); // auto flush at every cout
+        
         if (!l.owns_lock()) {
             return;
         }
@@ -368,7 +371,7 @@ private:
         }
 
         std::cout << "\n\nBacktrace detail:";
-        for (int i = 2; i < frame_count - 3; i++) {
+        for (int i = 2; i < frame_count - 2; i++) {
             char cmd[1024] = {0};
             size_t vma_addr = mem2vma((size_t) callstack[i]) - 1;
 
